@@ -1,0 +1,12 @@
+// Instagram user ID to fetch all the stories from
+// go to https://www.instagram.com/USERNAME/?__a=1 and read the user ID from profilePage_XXXXX
+let userID = '';
+
+// a valid cookie string from the browser
+// login to instagram, open the web inspector, right click on a request, click "copy as curl"
+// then copy the cookie string from the request header except from the 'cookie: ' part
+// example: let cookie = 'mid=YX.....';
+let cookie =   '';
+
+exports.userID = userID;
+exports.cookie = cookie;
