@@ -1,7 +1,8 @@
 const config = require('./config.js');
 const request = require('request');
 const fs = require('fs');
-const md5File = require('md5-file')
+const md5File = require('md5-file');
+const fsExtra = require('fs-extra');
 
 
 // ------------------------------------------------ System variables -------------------------------------------------
@@ -77,8 +78,7 @@ getTrays().then(
         }
 
         // empty the temp folder
-        await deleteAllFilesInFolder(downloadPath);
-        await deleteAllFoldersInFolder(downloadPath);
+        fsExtra.emptyDirSync(downloadPath);
     }
 );
 
@@ -99,25 +99,6 @@ async function copyFileAndCreateDirectoryIfNotExists(source, target) {
     });
 }
 
-async function deleteAllFilesInFolder(folder) {
-    let files = await getAllFiles(folder);
-    for (const file of files) {
-        fs.unlink(file, (err) => {
-            if (err) throw err;
-        });
-    }
-}
-
-async function deleteAllFoldersInFolder(folder) {
-    let folders = await getAllFolders(folder);
-    for (const folder of folders) {
-        fs.rmdir(folder, { recursive: true }, (err) => {
-            if (err) throw err;
-        });
-    }
-}
-
-
 function getAllFiles(dir, files_) {
     files_ = files_ || [];
     var files = fs.readdirSync(dir);
@@ -130,19 +111,6 @@ function getAllFiles(dir, files_) {
         }
     }
     return files_;
-}
-
-function getAllFolders(dir, folders_) {
-    folders_ = folders_ || [];
-    var files = fs.readdirSync(dir);
-    for (var i in files) {
-        var name = dir + '/' + files[i];
-        if (fs.statSync(name).isDirectory()) {
-            folders_.push(name);
-            getAllFolders(name, folders_);
-        }
-    }
-    return folders_;
 }
 
 function fileName(url) {
