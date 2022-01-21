@@ -7,8 +7,8 @@ const md5File = require('md5-file')
 // ------------------------------------------------ System variables -------------------------------------------------
 const userID = config.userID;
 const cookie = config.cookie;
-const downloadPath = './temp/';
-const savePath = './instagram/';
+const downloadPath = config.downloadPath;
+const savePath = config.savePath;
 
 const headers = {
     'authority': 'i.instagram.com',
