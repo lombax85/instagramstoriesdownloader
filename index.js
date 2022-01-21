@@ -1,6 +1,7 @@
 const config = require('./config.js');
 const request = require('request');
 const fs = require('fs');
+const md5File = require('md5-file')
 
 
 // ------------------------------------------------ System variables -------------------------------------------------
@@ -36,28 +37,123 @@ const url = 'https://i.instagram.com/api/v1/feed/reels_media/?reel_ids=';
 
 // ------------------------------------------------------ Code -------------------------------------------------------
 
-createFolderIfNotExists('./instagram');
-getTrays();
+const downloadPath = './temp/';
+const savePath = './instagram/';
+createFolderIfNotExists(downloadPath);
+getTrays().then(
+    (trayIDs) => {
+
+        // get all downloaded files
+        let downloadedFiles = getAllFiles(removeTrailingSlash(downloadPath));
+        let downloadedFileMap = downloadedFiles.map((file) => {
+            return {
+                fileName: fileName(file),
+                filePath: file,
+                folder: file.replace(fileName(file), ''),
+                md5: md5File.sync(file)
+            }
+        });
+
+        // get all saved files
+        let savedFiles = getAllFiles(removeTrailingSlash(savePath));
+        let savedFileMap = savedFiles.map((file) => {
+            return {
+                fileName: fileName(file),
+                filePath: file,
+                folder: file.replace(fileName(file), ''),
+                md5: md5File.sync(file)
+            }
+        });
+
+        // for every downloaded file, check if it is already saved
+        // if not, save it
+        downloadedFileMap.forEach((file) => {
+            let isSaved = savedFileMap.find((savedFile) => {
+                return savedFile.md5 === file.md5;
+            });
+            if (!isSaved) {
+                copyFileAndCreateDirectoryIfNotExists(file.filePath, savePath+file.folder.replace(downloadPath, '')+file.fileName);
+            }
+        });
+
+        // empty the temp folder
+        emptyFolder(downloadPath);
+    }
+);
+
+
+
+
 
 // ---------------------------------------------------- Functions ----------------------------------------------------
 
-function getTrays() {
-    request({
-        url: trayUrl,
-        headers: headers,
-        json: true
-    }, function (error, response, body) {
-        if (error) {
-            console.log('Error: ' + error);
-        } else {
-            let trayIds = body.tray.map(tray => tray.id);
-            getStoryVideos(trayIds);
+function removeTrailingSlash(url) {
+    return url.replace(/\/$/, '');
+}
+
+async function copyFileAndCreateDirectoryIfNotExists(source, target) {
+    await createFolderIfNotExists(target.replace(fileName(target), ''));
+    fs.copyFile(source, target, (err) => {
+        if (err) throw err;
+    });
+}
+
+async function emptyDirectory(path) {
+    await fs.readdir(path, (err, files) => {
+        if (err) throw err;
+        for (const file of files) {
+            fs.unlink(path + file, err => {
+                if (err) throw err;
+            });
         }
     });
 }
 
+function saveFileMap(fileMap) {
+    fs.writeFileSync(`${savePath}/fileMap.json`, JSON.stringify(fileMap));
+}
 
-function downloadFileToPath(url, path) {
+function getAllFiles(dir, files_) {
+    files_ = files_ || [];
+    var files = fs.readdirSync(dir);
+    for (var i in files) {
+        var name = dir + '/' + files[i];
+        if (fs.statSync(name).isDirectory()) {
+            getAllFiles(name, files_);
+        } else {
+            files_.push(name);
+        }
+    }
+    return files_;
+}
+
+function fileName(url) {
+    return url.split('/').pop();
+}
+
+function getTrays() {
+    return new Promise((resolve,reject) => {
+        request({
+            url: trayUrl,
+            headers: headers,
+            json: true
+        }, async (err, res, body) => {
+            if (err) {
+                reject(err);
+            } else {
+                let tray = body
+                let trayIds = tray.tray.map((tray) => {
+                    return tray.id;
+                });
+                await getStoryVideos(trayIds);
+                resolve(trayIds);
+            }
+        });
+    });
+}
+
+
+async function downloadFileToPath(url, path) {
     return new Promise(function(resolve, reject) {
         request(url).pipe(fs.createWriteStream(path)).on('close', resolve);
     });
@@ -69,7 +165,7 @@ function createFolder(path) {
     });
 }
 
-function createFolderIfNotExists(path) {
+async function createFolderIfNotExists(path) {
     return new Promise(function(resolve, reject) {
         fs.stat(path, function(err, stats) {
             if (err) {
@@ -81,16 +177,16 @@ function createFolderIfNotExists(path) {
     });
 }
 
-function getStoryVideos(storyIds) {
+async function getStoryVideos(storyIds) {
     for (let i = 0; i < storyIds.length; i++) {
         let storyVideos = [];
         let storyImages = [];
         let storyId = storyIds[i];
-        requestWithHeaders(url+storyId, headers).then(
-            function(response) {
+        await requestWithHeaders(url+storyId, headers).then(
+            async function (response) {
                 let json = JSON.parse(response);
                 let items = json.reels_media[0].items;
-                items.forEach(function(item) {
+                items.forEach(function (item) {
 
                     try {
 
@@ -114,17 +210,17 @@ function getStoryVideos(storyIds) {
 
                 });
 
-                createFolderIfNotExists('./instagram/'+storyId).then( () => {
-                        storyImages.forEach((image) => {
-                            downloadFileToPath(image.image, './instagram/'+storyId+'/'+image.id+'.jpg').then(() => {
-                                console.log('downloaded '+image.id);
-                            });
+                await createFolderIfNotExists(downloadPath + storyId).then(() => {
+                    storyImages.forEach(async (image) => {
+                        downloadFileToPath(image.image, downloadPath + storyId + '/' + image.id + '.jpg').then(() => {
+                            console.log('downloaded ' + image.id);
                         });
-                        storyVideos.forEach((video) => {
-                            downloadFileToPath(video.video, './instagram/'+storyId+'/'+video.id+'.mp4').then(() => {
-                                console.log('downloaded '+video.id);
-                            });
+                    });
+                    storyVideos.forEach(async (video) => {
+                        downloadFileToPath(video.video, downloadPath + storyId + '/' + video.id + '.mp4').then(() => {
+                            console.log('downloaded ' + video.id);
                         });
+                    });
                 });
 
             },

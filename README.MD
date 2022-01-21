@@ -16,7 +16,9 @@ Then
 node index.js
 ```
 
-All the stories will be downloaded in the `./instagram` directory.
+- First, all the stories will be downloaded in the `./temp` directory.
+- Then, each story will be moved into the coresponding `./instagram` subdirectory, only if not already present.
+(presence is checked by the file md5 hash)
 
 ## Warning
 This project relies on the Instagram API, and is not endorsed or certified by Instagram.  
