@@ -93,8 +93,8 @@ function removeTrailingSlash(url) {
 }
 
 async function copyFileAndCreateDirectoryIfNotExists(source, target) {
-    await createFolderIfNotExists(target.replace(fileName(target), ''));
-    fs.copyFile(source, target, (err) => {
+    await createFolderIfNotExists(target.replace(fileName(target), '').replace(':', '_'));
+    fs.copyFile(source, target.replace(':', '_'), (err) => {
         if (err) throw err;
     });
 }
