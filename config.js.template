@@ -1,12 +1,20 @@
 // Instagram user ID to fetch all the stories from
 // go to https://www.instagram.com/USERNAME/?__a=1 and read the user ID from profilePage_XXXXX
-let userID = '';
+const userID = '';
 
 // a valid cookie string from the browser
 // login to instagram, open the web inspector, right click on a request, click "copy as curl"
 // then copy the cookie string from the request header except from the 'cookie: ' part
 // example: let cookie = 'mid=YX.....';
-let cookie =   '';
+const cookie =   '';
+
+// a temporary path for downloading the stories, default provided. Format with dot, leading slash, trailing slash: ./dir/
+const downloadPath = './temp/';
+
+// the final path to save the stories to, default provided.  Format with dot, leading slash, trailing slash: ./dir/
+const savePath = './instagram/';
 
 exports.userID = userID;
 exports.cookie = cookie;
+exports.downloadPath = downloadPath;
+exports.savePath = savePath;

@@ -7,6 +7,8 @@ const md5File = require('md5-file')
 // ------------------------------------------------ System variables -------------------------------------------------
 const userID = config.userID;
 const cookie = config.cookie;
+const downloadPath = './temp/';
+const savePath = './instagram/';
 
 const headers = {
     'authority': 'i.instagram.com',
@@ -37,11 +39,9 @@ const url = 'https://i.instagram.com/api/v1/feed/reels_media/?reel_ids=';
 
 // ------------------------------------------------------ Code -------------------------------------------------------
 
-const downloadPath = './temp/';
-const savePath = './instagram/';
 createFolderIfNotExists(downloadPath);
 getTrays().then(
-    (trayIDs) => {
+    async (trayIDs) => {
 
         // get all downloaded files
         let downloadedFiles = getAllFiles(removeTrailingSlash(downloadPath));
@@ -67,17 +67,18 @@ getTrays().then(
 
         // for every downloaded file, check if it is already saved
         // if not, save it
-        downloadedFileMap.forEach((file) => {
+        for (const file of downloadedFileMap) {
             let isSaved = savedFileMap.find((savedFile) => {
                 return savedFile.md5 === file.md5;
             });
             if (!isSaved) {
-                copyFileAndCreateDirectoryIfNotExists(file.filePath, savePath+file.folder.replace(downloadPath, '')+file.fileName);
+                await copyFileAndCreateDirectoryIfNotExists(file.filePath, savePath + file.folder.replace(downloadPath, '') + file.fileName);
             }
-        });
+        }
 
         // empty the temp folder
-        emptyFolder(downloadPath);
+        await deleteAllFilesInFolder(downloadPath);
+        await deleteAllFoldersInFolder(downloadPath);
     }
 );
 
@@ -98,20 +99,24 @@ async function copyFileAndCreateDirectoryIfNotExists(source, target) {
     });
 }
 
-async function emptyDirectory(path) {
-    await fs.readdir(path, (err, files) => {
-        if (err) throw err;
-        for (const file of files) {
-            fs.unlink(path + file, err => {
-                if (err) throw err;
-            });
-        }
-    });
+async function deleteAllFilesInFolder(folder) {
+    let files = await getAllFiles(folder);
+    for (const file of files) {
+        fs.unlink(file, (err) => {
+            if (err) throw err;
+        });
+    }
 }
 
-function saveFileMap(fileMap) {
-    fs.writeFileSync(`${savePath}/fileMap.json`, JSON.stringify(fileMap));
+async function deleteAllFoldersInFolder(folder) {
+    let folders = await getAllFolders(folder);
+    for (const folder of folders) {
+        fs.rmdir(folder, { recursive: true }, (err) => {
+            if (err) throw err;
+        });
+    }
 }
+
 
 function getAllFiles(dir, files_) {
     files_ = files_ || [];
@@ -125,6 +130,19 @@ function getAllFiles(dir, files_) {
         }
     }
     return files_;
+}
+
+function getAllFolders(dir, folders_) {
+    folders_ = folders_ || [];
+    var files = fs.readdirSync(dir);
+    for (var i in files) {
+        var name = dir + '/' + files[i];
+        if (fs.statSync(name).isDirectory()) {
+            folders_.push(name);
+            getAllFolders(name, folders_);
+        }
+    }
+    return folders_;
 }
 
 function fileName(url) {
